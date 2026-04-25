@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>DMR GALERİ</title>
+
+<style>
+body{
+    background:black;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+    margin:0;
+    box-shadow: inset 0 0 30px cyan, inset 0 0 60px cyan;
+}
+
+h1{
+    color:cyan;
+    text-shadow:0 0 20px cyan;
+    margin-top:20px;
+}
+
+#loginBox{
+    display:inline-block;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 0 15px cyan;
+    margin-top:20px;
+}
+
+input{
+    padding:10px;
+    border-radius:10px;
+    border:1px solid cyan;
+    background:#111;
+    color:white;
+    box-shadow:0 0 10px cyan;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:20px;
+    background:linear-gradient(45deg, cyan, purple);
+    color:white;
+    cursor:pointer;
+    margin:5px;
+}
+
+button:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 15px cyan,0 0 30px purple;
+}
+
+.card{
+    display:inline-block;
+    margin:15px;
+    padding:10px;
+    border-radius:20px;
+    box-shadow:0 0 15px cyan;
+}
+
+.card img{
+    width:250px;
+    border-radius:15px;
+    cursor:pointer;
+}
+
+#modal{
+    display:none;
+    position:fixed;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.9);
+    justify-content:center;
+    align-items:center;
+}
+
+#modal img{
+    max-width:80%;
+}
+</style>
+</head>
+
+<body>
+
+<h1>DMR GALERİ</h1>
+
+<div id="loginBox">
+<input id="user" placeholder="kullanıcı">
+<input id="pass" placeholder="şifre" type="password">
+<button onclick="login()">Giriş</button>
+</div>
+
+<br>
+<button onclick="logout()">Çıkış</button>
+
+<br><br>
+
+<input type="file" id="file">
+<button onclick="upload()">Foto Ekle</button>
+
+<div id="galeri"></div>
+
+<div id="modal" onclick="closeModal()">
+<img id="bigImg">
+</div>
+
+<script>
+
+/* CLOUDINARY */
+const cloudName = "dbll1h2zc";
+const uploadPreset = "dmr0121";
+
+/* ELEMENT */
+const loginBox = document.getElementById("loginBox");
+
+/* STORAGE */
+let galeri = JSON.parse(localStorage.getItem("galeri")) || [];
+
+function save(){
+    localStorage.setItem("galeri", JSON.stringify(galeri));
+}
+
+/* LOGIN CONTROL (SAYFA AÇILINCA) */
+if(localStorage.getItem("login")){
+    loginBox.style.display = "none";
+}else{
+    loginBox.style.display = "block";
+}
+
+/* LOGIN */
+function login(){
+    let u = document.getElementById("user").value;
+    let p = document.getElementById("pass").value;
+
+    if(u==="dmr" && p==="9999"){
+        localStorage.setItem("login", true);
+        loginBox.style.display = "none";
+        render();
+    }else{
+        alert("hatalı");
+    }
+}
+
+/* LOGOUT */
+function logout(){
+    localStorage.removeItem("login");
+    loginBox.style.display = "block";
+    render();
+}
+
+/* UPLOAD */
+async function upload(){
+
+    if(!localStorage.getItem("login")){
+        alert("giriş yap");
+        return;
+    }
+
+    let file = document.getElementById("file").files[0];
+    if(!file){
+        alert("foto seç");
+        return;
+    }
+
+    let form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", uploadPreset);
+
+    let res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,{
+        method:"POST",
+        body:form
+    });
+
+    let data = await res.json();
+
+    if(data.secure_url){
+        galeri.push({url:data.secure_url, like:0});
+        save();
+        render();
+    }else{
+        alert("yüklenmedi");
+        console.log(data);
+    }
+}
+
+/* RENDER */
+function render(){
+
+    let div = document.getElementById("galeri");
+
+    if(!localStorage.getItem("login")){
+        div.innerHTML = "<p style='color:cyan'>🔒 giriş yapmadan göremezsin</p>";
+        return;
+    }
+
+    div.innerHTML="";
+
+    galeri.forEach((g,i)=>{
+        div.innerHTML += `
+        <div class="card">
+            <img src="${g.url}" onclick="openModal('${g.url}')">
+            <br>
+            ❤️ <span onclick="like(${i})">${g.like}</span>
+            <br><br>
+            <button onclick="indir('${g.url}')">⬇️</button>
+            <button onclick="sil(${i})">🗑️</button>
+        </div>
+        `;
+    });
+}
+
+/* LIKE */
+function like(i){
+    galeri[i].like++;
+    save();
+    render();
+}
+
+/* SİL */
+function sil(i){
+    galeri.splice(i,1);
+    save();
+    render();
+}
+
+/* İNDİR */
+function indir(url){
+    window.open(url);
+}
+
+/* MODAL */
+function openModal(url){
+    document.getElementById("modal").style.display="flex";
+    document.getElementById("bigImg").src=url;
+}
+
+function closeModal(){
+    document.getElementById("modal").style.display="none";
+}
+
+/* ESC */
+document.addEventListener("keydown", e=>{
+    if(e.key==="Escape") closeModal();
+});
+
+/* BAŞLAT */
+render();
+
+</script>
+
+</body>
+</html>
